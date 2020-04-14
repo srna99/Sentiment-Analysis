@@ -4,22 +4,21 @@ CMSC 416 - PA 5: Sentiment Analysis (scorer.py)
 4/14/2020
 ~~~~~
 Problem:
-This program addresses the goal of scoring the accuracy of the decision list model.
-The overall accuracy of the implemented model is 0.9 or 90%.
+This program addresses the goal of scoring the accuracy of the decision list model. The overall accuracy of
+the implemented model is 0.71 or 71%.
 Usage:
 The user should include the template below when executing:
     (answers to test data) (test key data)
-Ex. python3 scorer.py my-line-answers.txt line-key.txt
-    > Baseline Accuracy (phone): 0.51
-    > Overall Accuracy: 0.9
-    >        phone product
-    > phone     64     8
-    > product    4    50
+Ex. python3 scorer.py my-sentiment-answers.txt sentiment-test-key.txt
+    > Baseline Accuracy (positive) : 0.64
+    > Overall Accuracy: 0.71
+    >          positive negative
+    >  positive     148       12
+    >  negative      56       16
 Algorithm:
-Each sentiments in the answers set is compared to the sentiments in the key and then
-inputted in the confusion matrix. The baseline accuracy is calculated by
-assuming every sentiments to be the most frequent one (in this case it is "phone") and
-dividing the number of correct instances by the total number of answers. The
+Each sentiment in the answer set is compared to the sentiments in the key and then inputted in the confusion
+matrix. The baseline accuracy is calculated by assuming every sentiment to be the most frequent one (in
+this case it is "positive") and dividing the number of correct instances by the total number of answers. The
 overall accuracy is calculated by dividing the total correct sentiments by the
 total number of answers.
 """
@@ -39,13 +38,13 @@ key = {}  # sentiments in key
 sentiments = {"positive": 0, "negative": 1}  # associate sentiments with number
 
 
-# split sentiments from instances and add to respective sentiments lists
+# split sentiments from instances and add to respective sentiments dicts
 def get_sentiments(answer_list, instance_sentiment_dict):
     for ans in answer_list:
         ans_parts = re.search(r'instance=\"(.*)\" sentiment=\"(.*)\"', ans)
-        instance_id = ans_parts.group(1)
+        instance = ans_parts.group(1)
         sentiment = ans_parts.group(2)
-        instance_sentiment_dict[instance_id] = sentiment
+        instance_sentiment_dict[instance] = sentiment
 
 
 # tokenize answers
@@ -58,7 +57,7 @@ with open(test_key, 'r', encoding="utf-8-sig") as file:
     key_content.extend(file.read().split("\n"))
     key_content.pop()
 
-# get only sentiments
+# get sentiments by instance ids
 get_sentiments(answer_content, answers)
 get_sentiments(key_content, key)
 
@@ -81,10 +80,10 @@ for instance_id in key.keys():
             most_sentiment = actual_sentiment
             most_count = confusion_matrix[sentiments[actual_sentiment]][sentiments[predicted_sentiment]]
 
-        # increment total correct count if sentiments is correct
+        # increment total correct count if sentiment is correct
         total_correct += 1
 
-# BA = (num of correct answers if all are most frequent sentiments)/total num of answers
+# BA = (num of correct answers if all are most frequent sentiment)/total num of answers
 baseline_accuracy = round(most_count / len(key), 2)
 # A = num of correct answers/total num of answers
 accuracy = round(total_correct / len(key), 2)

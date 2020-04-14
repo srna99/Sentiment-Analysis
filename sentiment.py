@@ -4,25 +4,25 @@ CMSC 416 - PA 5: Sentiment Analysis (sentiments.py)
 4/14/2020
 ~~~~~
 Problem:
-This program aims to disambiguate the words "line/lines" through the decision list model. Selected features
-were chosen to gain contextual information about the targeted word.
+This program aims to analyze sentiment through the decision list model. Selected features were chosen to
+gain contextual information about the targeted word.
 Usage:
 The user should include additional arguments when executing program as follows:
     (annotated training data) (test data) (model log) > (answers)
-Ex. python3 wsd.py line-train.txt line-test.txt my-model.txt > my-line-answers.txt
-    > <answer instance="line-n.w8_053:3883:" senseid="phone"/> etc.
+Ex. python3 sentiment.py sentiment-train.txt sentiment-test.txt my-model.txt > my-sentiment-answers.txt
+    > <answer instance="621519370921967620" sentiment="negative"/> etc.
 Algorithm:
-This model is based on Yarowsky's decision list. Unigrams and bi-grams surrounding the target word are
-collected as features and their position relative to the target word is noted. Features used includes w+1,
-w-1, w-2 & w-1, w+1 & w+2, and several more. Smoothing was applied, where each feature's sentiments frequency
+This model is based on Yarowsky's decision list. Unigrams surrounding the target word are collected as
+features in a bag-of-words approach. Smoothing was applied, where each feature's sentiments frequency
 was increased by 1. Tests based on the features were created and ranked based on their log-likelihood score
-(abs(log( (P(sense_1|feature)/(P(sense_2|feature) ))). The tests are then applied to the test data in
-ranked order, where the first test to pass results in the associated sentiments.
-Baseline Accuracy (phone): 0.51
-Overall Accuracy: 0.9
-        phone product
- phone     64     8
- product    4    50
+(abs(log( (P(sentiment_1|feature)/(P(sentiment_2|feature) ))). The tests are then applied to the test data in
+ranked order, where the first test to pass results in the associated sentiment.
+Baseline Accuracy (positive) : 0.64
+Overall Accuracy: 0.71
+
+         positive negative
+ positive     148       12
+ negative      56       16
 """
 
 import sys
@@ -40,9 +40,9 @@ test_content = []  # tokenized test set
 sentiment_positive = "positive"
 sentiment_negative = "negative"
 
-feature_sense_dict = {}  # sentiments frequency based on features
+feature_sense_dict = {}  # sentiment frequency based on features
 feature_frequency_dict = {}  # feature frequency
-sense_frequency_dict = {sentiment_positive: 0, sentiment_negative: 0}  # sentiments frequency
+sense_frequency_dict = {sentiment_positive: 0, sentiment_negative: 0}  # sentiment frequency
 
 ranked_tests = []  # ranked tests
 answers = []  # answers to test set
@@ -50,7 +50,13 @@ answers = []  # answers to test set
 
 # gets rid of unnecessary elements in context and returns a tokenized version
 def clean_context(content):
-    content = re.sub(r'(<.>|<\/.>|\.|,|;|!|-|&|\)|\(|\"|\?)', ' ', content)
+    content = re.sub(r'\bhttp[s]?:\/\/t\.co\/.*\b', ' ', content)
+    content = re.sub(r'(<.>|<\/.>|\.|,|;|:|!|-|&|\)|\(|\"|\'|\?|#|@)', ' ', content)
+    content = re.sub(r'\b(to|a|i|is|it|am|at|but|again|there|about|very|have|with|they|an|be|some|for|do'
+                     r'|its|your|such|into|of|most|other|or|as|from|him|the|themselves|we|are|these|his'
+                     r'|through|me|were|her|this|himself|yourself|should|our|their|while|and|had|she|all'
+                     r'|them|in|will|on|does|that|then|because|what|so|why|can|did|not|he|you|herself|has'
+                     r'|too|only|myself|which|those|after|if|my|by|was|here|s|ve|nt|ll)\b', ' ', content)
     content = re.sub(r'\s+', ' ', content)
     return content.split()
 
@@ -75,7 +81,7 @@ for instance in train_content:
     context = re.search(r'<context>\n(.*)\n</context>', instance).group(1)
     context_words = clean_context(context)
 
-    # get features
+    # get features and update counts in feature sense dict and feature frequency dict
     for feature_word in context_words:
         if feature_word not in feature_sense_dict.keys():
             feature_sense_dict[feature_word] = {sentiment_positive: 1, sentiment_negative: 1}
@@ -89,21 +95,21 @@ for instance in train_content:
 
 # calculate log-likelihood ratio for each feature
 for feature, sentiment_frequencies in feature_sense_dict.items():
-    # probability of phone given feature
+    # probability of positive sentiment given feature
     prob_pos = sentiment_frequencies[sentiment_positive] / feature_frequency_dict[feature]
-    # probability of product given feature
+    # probability of negative sentiment given feature
     prob_neg = sentiment_frequencies[sentiment_negative] / feature_frequency_dict[feature]
 
-    # pick sentiments with higher probability
+    # pick sentiment with higher probability
     if prob_pos >= prob_neg:
         sentiment = sentiment_positive
     else:
         sentiment = sentiment_negative
 
-    # abs(log( (P(sense_1|feature)/(P(sense_2|feature) ))
+    # abs(log( (P(sentiment_1|feature)/(P(sentiment_2|feature) ))
     log_likelihood_ratio = round(abs(math.log(prob_pos / prob_neg)), 5)
 
-    # add calculated ratio, feature type, feature, and sentiments to test
+    # add calculated ratio, feature type, feature, and sentiment to test
     test = (log_likelihood_ratio, feature, sentiment)
     ranked_tests.append(test)
 
@@ -132,6 +138,7 @@ for instance in test_content:
         # if training feature is in test then success
         if test[1] in context_words:
             sentiment = test[2]
+            break
 
     # if no sentiments was assigned and every test failed, assign the most frequent sentiments to target
     if sentiment == "":
